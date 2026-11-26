@@ -135,7 +135,7 @@ function TrackBattery({ id, contract, startBlock }) {
 
 function Track() {
     const { id } = useParams();
-    const { account, contract, startBlock, loading, error, connect, connectError } = useSupplyChain();
+    const { account, contract, startBlock, loading, error, connect, connectError, wrongNetwork, switchNetwork } = useSupplyChain();
 
     if (loading || error) {
         return <StatusScreen loading={loading} error={error} />;
@@ -143,7 +143,7 @@ function Track() {
 
     return (
         <div className="container-xl track-container">
-            <AccountHeader account={account} connect={connect} connectError={connectError} />
+            <AccountHeader account={account} connect={connect} connectError={connectError} wrongNetwork={wrongNetwork} switchNetwork={switchNetwork} />
             {id === undefined
                 ? <TrackSearch />
                 : <TrackBattery id={id} contract={contract} startBlock={startBlock} />}

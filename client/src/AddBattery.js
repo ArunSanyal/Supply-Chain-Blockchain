@@ -4,7 +4,7 @@ import useTransaction from "./useTransaction"
 import { AccountHeader, StatusScreen, BatteryTable, TxStatus, WalletNotice } from "./Layout"
 
 function AddBattery() {
-    const { account, contract, loading, error, connect, connectError } = useSupplyChain();
+    const { account, contract, loading, error, connect, connectError, wrongNetwork, switchNetwork } = useSupplyChain();
     const { status, run, fail, pending } = useTransaction();
     const [batteries, setBatteries] = useState([]);
     const [name, setName] = useState("");
@@ -34,9 +34,9 @@ function AddBattery() {
     return (
         <div className="add-battery-page">
             <div className="add-battery-card">
-                <AccountHeader account={account} connect={connect} connectError={connectError} />
+                <AccountHeader account={account} connect={connect} connectError={connectError} wrongNetwork={wrongNetwork} switchNetwork={switchNetwork} />
                 <h5>Add Battery Order:</h5>
-                <WalletNotice account={account} action="order batteries" />
+                <WalletNotice account={account} wrongNetwork={wrongNetwork} action="order batteries" />
                 <form onSubmit={handleSubmit} className="add-battery-form">
                     <fieldset className="inline-fields" disabled={!account || pending}>
                         <div>

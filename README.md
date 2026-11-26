@@ -11,7 +11,7 @@ This project tracks a battery as it moves through a supply chain, from the order
 - Each stage step can carry a location and a note. They are stored in the `StageChanged` event with the participant, their address and the block time.
 - Each battery has its own page at `/track/<id>` with a timeline of every stage, built from those events, and a QR code that links back to the page.
 - The owner can pause the contract, which blocks ordering and all stage steps. Ownership moves in two steps (`transferOwnership`, then `acceptOwnership` from the new address), and can't be renounced, because the contract can't be run without an owner.
-- Without a wallet the app runs read-only: every page shows the contract's data and the forms ask you to connect a wallet.
+- Without a wallet the app runs read-only: every page shows the contract's data and the forms ask you to connect a wallet. If your wallet is on a network where the contract isn't deployed, the app also falls back to read-only and shows a Switch Network button, which asks the wallet to switch (adding the network first if the wallet doesn't know it).
 - Failed transactions show the contract's reason in plain words (for example "The battery must be in the Distribution stage, but it is in Manufacturing.") under the form that sent them. Pending and confirmed transactions are shown the same way.
 - A seed script fills a local chain with demo participants and six batteries, one at each stage.
 

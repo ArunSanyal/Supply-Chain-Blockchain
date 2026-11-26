@@ -171,8 +171,13 @@ const getDeployment = (chainId) => {
     return typeof entry === "string" ? { address: entry, startBlock: 0 } : entry;
 };
 
-// Connects to the contract through the wallet if the site is already connected to one,
-// otherwise read-only through RPC_URL. `account` is "" in read-only mode.
+// Name shown when asking the wallet to add a network it doesn't know yet
+const chainName = (chainId) => (chainId === 31337 ? "Hardhat local" : `Chain ${chainId}`);
+
+// Connects to the contract through the wallet if the site is already connected to one and
+// the wallet is on a network the contract is deployed to. Otherwise it reads through RPC_URL
+// (read-only, `account` is ""); if that is because the wallet is on the wrong network,
+// `wrongNetwork` is { walletChainId, chainId } and `switchNetwork` asks the wallet to switch.
 function useSupplyChain() {
     const [account, setAccount] = useState("");
     const [contract, setContract] = useState(null);
@@ -180,6 +185,7 @@ function useSupplyChain() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [connectError, setConnectError] = useState("");
+    const [wrongNetwork, setWrongNetwork] = useState(null);
     // Bumped to reconnect, e.g. after the wallet connects or disconnects
     const [session, setSession] = useState(0);
 
@@ -191,7 +197,13 @@ function useSupplyChain() {
             try {
                 // eth_accounts doesn't prompt; it is empty until the user connects
                 const accounts = ethereum ? await ethereum.request({ method: "eth_accounts" }) : [];
-                const walletConnected = accounts.length > 0;
+                let walletConnected = accounts.length > 0;
+                let walletChainId = null;
+                if (walletConnected) {
+                    walletChainId = await new Web3(ethereum).eth.getChainId();
+                    // On a network without the contract, fall back to read-only instead of failing
+                    if (!getDeployment(walletChainId)) walletConnected = false;
+                }
                 const web3 = new Web3(walletConnected ? ethereum : RPC_URL);
                 let chainId;
                 try {
@@ -212,6 +224,7 @@ function useSupplyChain() {
                 }
                 if (cancelled) return;
                 setAccount(walletConnected ? accounts[0] : "");
+                setWrongNetwork(walletChainId !== null && !walletConnected ? { walletChainId, chainId } : null);
                 setContract(new web3.eth.Contract(SUPPLY_CHAIN_ABI, deployment.address));
                 setStartBlock(deployment.startBlock);
                 setError("");
@@ -250,7 +263,39 @@ function useSupplyChain() {
         }
     }, []);
 
-    return { account, contract, startBlock, loading, error, connect, connectError };
+    // Asks the wallet to switch to the contract's network, adding it first if the wallet
+    // doesn't know it (error 4902)
+    const switchNetwork = useCallback(async () => {
+        if (!wrongNetwork) return;
+        setConnectError("");
+        const chainIdHex = "0x" + wrongNetwork.chainId.toString(16);
+        try {
+            await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chainIdHex }] });
+        } catch (err) {
+            if (err.code !== 4902) {
+                setConnectError(getErrorMessage(err));
+                return;
+            }
+            try {
+                await window.ethereum.request({
+                    method: "wallet_addEthereumChain",
+                    params: [{
+                        chainId: chainIdHex,
+                        chainName: chainName(wrongNetwork.chainId),
+                        rpcUrls: [RPC_URL],
+                        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                    }],
+                });
+            } catch (addErr) {
+                setConnectError(getErrorMessage(addErr));
+                return;
+            }
+        }
+        // MetaMask also fires chainChanged, which reloads the page
+        setSession((n) => n + 1);
+    }, [wrongNetwork]);
+
+    return { account, contract, startBlock, loading, error, connect, connectError, wrongNetwork, switchNetwork };
 }
 
 export default useSupplyChain;

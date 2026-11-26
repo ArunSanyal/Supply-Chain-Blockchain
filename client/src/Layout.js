@@ -1,13 +1,21 @@
 import React from 'react';
 import { useHistory } from "react-router-dom";
 
-// Shows the connected account, or a Connect Wallet button in read-only mode
-export function AccountHeader({ account, connect, connectError }) {
+// Shows the connected account, a Switch Network button if the wallet is on a network
+// without the contract, or a Connect Wallet button in read-only mode
+export function AccountHeader({ account, connect, connectError, wrongNetwork, switchNetwork }) {
     const history = useHistory();
     return (
         <div className="header-container">
             {account ? (
                 <span><b>Current Account Address:</b> {account}</span>
+            ) : wrongNetwork ? (
+                <span>
+                    <b>Wrong network:</b> your wallet is on chain {wrongNetwork.walletChainId}, but the contract is
+                    on chain {wrongNetwork.chainId}. Showing read-only data.{" "}
+                    <button onClick={switchNetwork} className="btn btn-outline-primary btn-sm">Switch Network</button>
+                    {connectError && <span className="inline-error"> {connectError}</span>}
+                </span>
             ) : (
                 <span>
                     <b>Read-only mode:</b> no wallet connected.{" "}
@@ -21,9 +29,13 @@ export function AccountHeader({ account, connect, connectError }) {
 }
 
 // Shown above a form when there is no wallet to send its transaction from
-export function WalletNotice({ account, action }) {
+export function WalletNotice({ account, action, wrongNetwork }) {
     if (account) return null;
-    return <p className="wallet-notice">Connect a wallet to {action}.</p>;
+    return (
+        <p className="wallet-notice">
+            {wrongNetwork ? "Switch your wallet to the contract's network" : "Connect a wallet"} to {action}.
+        </p>
+    );
 }
 
 const TX_STATUS_CLASSES = { pending: "alert-info", confirmed: "alert-success", failed: "alert-danger" };

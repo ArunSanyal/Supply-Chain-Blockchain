@@ -58,7 +58,7 @@ function StepForm({ step, account, contract, onDone }) {
 }
 
 function Supply() {
-    const { account, contract, loading, error, connect, connectError } = useSupplyChain();
+    const { account, contract, loading, error, connect, connectError, wrongNetwork, switchNetwork } = useSupplyChain();
     const [batteries, setBatteries] = useState([]);
     const [loadError, setLoadError] = useState("");
 
@@ -76,12 +76,12 @@ function Supply() {
 
     return (
         <div className="supply-container">
-            <AccountHeader account={account} connect={connect} connectError={connectError} />
+            <AccountHeader account={account} connect={connect} connectError={connectError} wrongNetwork={wrongNetwork} switchNetwork={switchNetwork} />
             <h6><b>Supply Chain Flow:</b></h6>
             <p>Battery Order -&gt; Raw Material Supplier -&gt; Manufacturer -&gt; Distributor -&gt; Retailer -&gt; Consumer</p>
             {loadError && <p className="inline-error">{loadError}</p>}
             <BatteryTable batteries={batteries} className="table table-sm table-dark" />
-            <WalletNotice account={account} action="move batteries through the supply chain" />
+            <WalletNotice account={account} wrongNetwork={wrongNetwork} action="move batteries through the supply chain" />
             {STEPS.map((step) => (
                 <StepForm key={step.method} step={step} account={account} contract={contract} onDone={refresh} />
             ))}

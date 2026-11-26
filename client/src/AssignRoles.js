@@ -8,7 +8,7 @@ import './AssignRoles.css'; // Import custom CSS file
 const emptyForm = { address: "", name: "", place: "", type: "rms" };
 
 function AssignRoles() {
-    const { account, contract, loading, error, connect, connectError } = useSupplyChain();
+    const { account, contract, loading, error, connect, connectError, wrongNetwork, switchNetwork } = useSupplyChain();
     const { status, run, fail, pending } = useTransaction();
     const [participants, setParticipants] = useState({ rms: {}, man: {}, dis: {}, ret: {} });
     const [paused, setPaused] = useState(false);
@@ -82,8 +82,8 @@ function AssignRoles() {
 
     return (
         <div className="assign-roles-container">
-            <AccountHeader account={account} connect={connect} connectError={connectError} />
-            <WalletNotice account={account} action="register participants or pause the contract" />
+            <AccountHeader account={account} connect={connect} connectError={connectError} wrongNetwork={wrongNetwork} switchNetwork={switchNetwork} />
+            <WalletNotice account={account} wrongNetwork={wrongNetwork} action="register participants or pause the contract" />
             <div className="pause-bar">
                 <span>Contract status: <b>{paused ? "Paused" : "Active"}</b></span>
                 <button
