@@ -1,6 +1,7 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Battery Supply Chain",
+  "name": "Battery Supply Chain on Ethereum",
+  "description": "Track batteries through a supply chain on Ethereum, from order to sale.",
   "icons": [
     {
       "src": "favicon.ico",
