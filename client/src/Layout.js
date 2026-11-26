@@ -63,28 +63,30 @@ export function StatusScreen({ loading, error }) {
 
 export function BatteryTable({ batteries, className = "table table-sm table-bordered" }) {
     return (
-        <table className={className}>
-            <thead>
-                <tr>
-                    <th scope="col">Battery ID</th>
-                    <th scope="col">Name</th>
-                    <th scope="col">Description</th>
-                    <th scope="col">Current Processing Stage</th>
-                </tr>
-            </thead>
-            <tbody>
-                {batteries.length === 0 && (
-                    <tr><td colSpan="4">No batteries ordered yet.</td></tr>
-                )}
-                {batteries.map((b) => (
-                    <tr key={b.id}>
-                        <td>{b.id}</td>
-                        <td>{b.name}</td>
-                        <td>{b.description}</td>
-                        <td>{b.stageText}</td>
+        <div className="table-responsive">
+            <table className={className}>
+                <thead>
+                    <tr>
+                        <th scope="col">Battery ID</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Current Processing Stage</th>
                     </tr>
-                ))}
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    {batteries.length === 0 && (
+                        <tr><td colSpan="4">No batteries ordered yet.</td></tr>
+                    )}
+                    {batteries.map((b) => (
+                        <tr key={b.id}>
+                            <td>{b.id}</td>
+                            <td>{b.name}</td>
+                            <td>{b.description}</td>
+                            <td>{b.stageText}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }

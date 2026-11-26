@@ -32,12 +32,12 @@ function AddBattery() {
     }
 
     return (
-        <div style={styles.container}>
-            <div style={styles.content}>
+        <div className="add-battery-page">
+            <div className="add-battery-card">
                 <AccountHeader account={account} connect={connect} connectError={connectError} />
                 <h5>Add Battery Order:</h5>
                 <WalletNotice account={account} action="order batteries" />
-                <form onSubmit={handleSubmit} style={styles.form}>
+                <form onSubmit={handleSubmit} className="add-battery-form">
                     <fieldset className="inline-fields" disabled={!account || pending}>
                         <div>
                             <label className="field-label" htmlFor="battery-name">Battery name</label>
@@ -59,29 +59,6 @@ function AddBattery() {
             </div>
         </div>
     )
-}
-
-const styles = {
-    container: {
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f0f4c3 30%, #c5e1a5 90%)', // Background gradient
-        padding: '20px'
-    },
-    content: {
-        backgroundColor: '#ffffffcc', // Slightly transparent white background
-        padding: '30px',
-        borderRadius: '10px',
-        boxShadow: '0px 0px 15px rgba(0, 0, 0, 0.2)',
-        maxWidth: '700px',
-        width: '100%',
-        textAlign: 'center'
-    },
-    form: {
-        marginBottom: '10px'
-    }
 }
 
 export default AddBattery

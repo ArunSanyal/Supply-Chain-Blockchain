@@ -25,3 +25,11 @@
     background-color: #343a40;
 }
 
+
+@media (max-width: 576px) {
+    .supply-container {
+        padding: 10px;
+        margin: 0;
+        border-radius: 0;
+    }
+}

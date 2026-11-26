@@ -166,40 +166,42 @@ function AssignRoles() {
             {ROLES.map(({ key, role, label }) => (
                 <div key={key}>
                     <h5>{label}s:</h5>
-                    <table className="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Name</th>
-                                <th>Place</th>
-                                <th>Ethereum Address</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {Object.values(participants[key]).length === 0 && (
-                                <tr><td colSpan="6">None registered yet.</td></tr>
-                            )}
-                            {Object.values(participants[key]).map((p) => (
-                                <tr key={p.id}>
-                                    <td>{p.id}</td>
-                                    <td>{p.name}</td>
-                                    <td>{p.place}</td>
-                                    <td>{p.addr}</td>
-                                    <td>{p.active ? "Active" : "Deactivated"}</td>
-                                    <td>
-                                        <button className="btn btn-link btn-sm" disabled={busy} onClick={() => startEdit(key, p)}>Edit</button>
-                                        {p.active ? (
-                                            <button className="btn btn-link btn-sm text-danger" disabled={busy} onClick={() => deactivate(role, p)}>Deactivate</button>
-                                        ) : (
-                                            <button className="btn btn-link btn-sm text-success" disabled={busy} onClick={() => runTx(`Reactivate ${p.name}`, contract.methods.reactivateParticipant(role, p.id))}>Reactivate</button>
-                                        )}
-                                    </td>
+                    <div className="table-responsive">
+                        <table className="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Place</th>
+                                    <th>Ethereum Address</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {Object.values(participants[key]).length === 0 && (
+                                    <tr><td colSpan="6">None registered yet.</td></tr>
+                                )}
+                                {Object.values(participants[key]).map((p) => (
+                                    <tr key={p.id}>
+                                        <td>{p.id}</td>
+                                        <td>{p.name}</td>
+                                        <td>{p.place}</td>
+                                        <td>{p.addr}</td>
+                                        <td>{p.active ? "Active" : "Deactivated"}</td>
+                                        <td>
+                                            <button className="btn btn-link btn-sm" disabled={busy} onClick={() => startEdit(key, p)}>Edit</button>
+                                            {p.active ? (
+                                                <button className="btn btn-link btn-sm text-danger" disabled={busy} onClick={() => deactivate(role, p)}>Deactivate</button>
+                                            ) : (
+                                                <button className="btn btn-link btn-sm text-success" disabled={busy} onClick={() => runTx(`Reactivate ${p.name}`, contract.methods.reactivateParticipant(role, p.id))}>Reactivate</button>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ))}
         </div>

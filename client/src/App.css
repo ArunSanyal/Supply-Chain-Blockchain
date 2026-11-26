@@ -134,3 +134,39 @@ hr{
     font-size: 0.85rem;
     word-break: break-all;
 }
+
+.add-battery-page {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f0f4c3 30%, #c5e1a5 90%);
+    padding: 20px;
+}
+
+.add-battery-card {
+    background-color: #ffffffcc;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
+    max-width: 700px;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+}
+
+.add-battery-form {
+    margin-bottom: 10px;
+}
+
+/* Phones: drop the fixed padding and margins so content fits in 375px */
+@media (max-width: 576px) {
+    .add-battery-page,
+    .track-container {
+        padding: 8px;
+    }
+
+    .add-battery-card {
+        padding: 12px;
+    }
+}
