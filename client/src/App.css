@@ -1,0 +1,65 @@
+hr{
+    position: relative;
+    top: 20px;
+    border: none;   
+    height: 12px;
+    background: black;
+}
+.wait{
+    text-align: center;
+    margin-top: 5rem;
+}
+
+
+/* Shared across pages */
+.header-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    word-break: break-all;
+}
+
+.home-button {
+    margin-left: 10px;
+    padding: 5px 10px;
+}
+
+.loader-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+    background-color: #f9f9f9;
+}
+
+.error-box {
+    max-width: 560px;
+    padding: 30px;
+    text-align: center;
+    background-color: #fff;
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+}
+
+.track-container {
+    padding: 20px;
+}
+
+.track-history {
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.track-arrow {
+    align-self: center;
+    font-size: 1.5rem;
+    padding: 0 5px;
+}
+
+.qr-code-container {
+    text-align: center;
+}

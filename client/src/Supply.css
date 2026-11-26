@@ -1,0 +1,27 @@
+.supply-container {
+    padding: 20px;
+    margin: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.supply-step {
+    margin-bottom: 30px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+}
+
+.table-dark thead th {
+    background-color: #343a40;
+}
+
+.table-dark tbody tr:nth-child(even) {
+    background-color: #454d55;
+}
+
+.table-dark tbody tr:nth-child(odd) {
+    background-color: #343a40;
+}
+
