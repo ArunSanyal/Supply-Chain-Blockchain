@@ -15,7 +15,7 @@ function App() {
           <Route path="/roles" component={AssignRoles} />
           <Route path="/addbattery" component={AddBattery} />
           <Route path="/supply" component={Supply} />
-          <Route path="/track" component={Track} />
+          <Route path="/track/:id?" component={Track} />
         </Switch>
       </Router>
     </div>

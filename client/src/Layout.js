@@ -1,12 +1,41 @@
 import React from 'react';
 import { useHistory } from "react-router-dom";
 
-export function AccountHeader({ account }) {
+// Shows the connected account, or a Connect Wallet button in read-only mode
+export function AccountHeader({ account, connect, connectError }) {
     const history = useHistory();
     return (
         <div className="header-container">
-            <span><b>Current Account Address:</b> {account}</span>
+            {account ? (
+                <span><b>Current Account Address:</b> {account}</span>
+            ) : (
+                <span>
+                    <b>Read-only mode:</b> no wallet connected.{" "}
+                    <button onClick={connect} className="btn btn-outline-primary btn-sm">Connect Wallet</button>
+                    {connectError && <span className="inline-error"> {connectError}</span>}
+                </span>
+            )}
             <button onClick={() => history.push('/')} className="btn btn-outline-danger btn-sm home-button">HOME</button>
+        </div>
+    );
+}
+
+// Shown above a form when there is no wallet to send its transaction from
+export function WalletNotice({ account, action }) {
+    if (account) return null;
+    return <p className="wallet-notice">Connect a wallet to {action}.</p>;
+}
+
+const TX_STATUS_CLASSES = { pending: "alert-info", confirmed: "alert-success", failed: "alert-danger" };
+
+// Progress of the last transaction from useTransaction. The wrapper is always rendered
+// so screen readers announce changes to it.
+export function TxStatus({ status }) {
+    return (
+        <div aria-live="polite">
+            {status && (
+                <div className={`alert ${TX_STATUS_CLASSES[status.state]} tx-status`}>{status.message}</div>
+            )}
         </div>
     );
 }

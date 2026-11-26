@@ -1,10 +1,27 @@
 {
   "scripts": {
-    "compile": "truffle compile",
-    "migrate": "truffle migrate --reset",
-    "test": "truffle test"
+    "compile": "hardhat compile && hardhat run scripts/export-abi.js",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "gas": "cross-env REPORT_GAS=true hardhat test",
+    "lint:sol": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "seed": "hardhat run scripts/seed.js --network localhost"
   },
   "dependencies": {
-    "truffle": "^5.7.4"
+    "@openzeppelin/contracts": "^5.6.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
+    "@nomicfoundation/hardhat-ethers": "^3.1.4",
+    "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
+    "chai": "^4.5.0",
+    "cross-env": "^10.1.0",
+    "ethers": "^6.17.0",
+    "hardhat": "^2.30.0",
+    "hardhat-gas-reporter": "^2.3.0",
+    "solhint": "^6.2.5",
+    "solidity-coverage": "^0.8.17"
   }
 }

@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  contracts:
+    name: Contracts (solhint, tests, ABI check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:sol
+      - run: npm test
+      - name: Check the committed ABI matches the contract
+        run: |
+          npm run compile
+          git diff --exit-code client/src/contracts/SupplyChain.abi.json
+
+  slither:
+    name: Slither static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Slither compiles through Hardhat, so the contract dependencies must be installed
+      - run: npm ci
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install slither-analyzer==0.11.6
+      # Fails on any finding, including informational ones
+      - run: slither . --filter-paths node_modules
+
+  frontend:
+    name: Frontend (ESLint, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - name: Build
+        run: npm run build
+        env:
+          # CI=true would turn build warnings into errors. The only build warnings come from
+          # Bootstrap 4's CSS and web3's source maps; ESLint above already fails on any
+          # warning in our own code.
+          CI: false

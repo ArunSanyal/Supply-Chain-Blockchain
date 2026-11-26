@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.24;
 
-contract SupplyChain {
-    address public Owner;
+import {Ownable, Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
-    constructor() {
-        Owner = msg.sender;
-    }
-
-    modifier onlyByOwner() {
-        require(msg.sender == Owner, "Only the owner can perform this action");
-        _;
-    }
-
-    enum STAGE {
-        Init,
+/// @title Battery supply chain
+/// @author ArunSanyal
+/// @notice Tracks batteries from order to sale. Each stage can only be performed by an
+/// active participant of the matching role, and only from the previous stage.
+contract SupplyChain is Ownable2Step, Pausable {
+    enum Stage {
+        Ordered,
         RawMaterialSupply,
         Manufacture,
         Distribution,
@@ -22,187 +18,286 @@ contract SupplyChain {
         Sold
     }
 
-    event ParticipantAdded(string role, uint256 indexed id, address indexed addr, string name);
-    event BatteryAdded(uint256 indexed id, string name);
-    event StageChanged(uint256 indexed batteryId, STAGE stage, address indexed by);
-
-    uint256 public batteryCtr = 0;
-    uint256 public rmsCtr = 0;
-    uint256 public manCtr = 0;
-    uint256 public disCtr = 0;
-    uint256 public retCtr = 0;
-
-    struct battery {
-        uint256 id; //unique battery id
-        string name; //name of the battery
-        string description; //about battery
-        uint256 RMSid; //id of the Raw Material supplier for this particular battery
-        uint256 MANid; //id of the Manufacturer for this particular battery
-        uint256 DISid; //id of the distributor for this particular battery
-        uint256 RETid; //id of the retailer for this particular battery
-        STAGE stage; //current battery stage
+    enum Role {
+        RawMaterialSupplier,
+        Manufacturer,
+        Distributor,
+        Retailer
     }
 
-    mapping(uint256 => battery) public BatteryStock;
+    struct Battery {
+        uint256 id;
+        string name;
+        string description;
+        uint256 supplierId; //raw material supplier that handled this battery
+        uint256 manufacturerId;
+        uint256 distributorId;
+        uint256 retailerId;
+        Stage stage;
+    }
 
-    //Every role shares the same shape
-    struct participant {
+    struct Participant {
         address addr;
-        uint256 id; //participant id within its role
-        string name; //Name of the participant
-        string place; //Place the participant is based in
+        bool active; //deactivated participants keep their record but can't act (packed with addr)
+        uint256 id; //id within its role, starting at 1
+        string name;
+        string place;
     }
 
-    mapping(uint256 => participant) public RMS;
-    mapping(uint256 => participant) public MAN;
-    mapping(uint256 => participant) public DIS;
-    mapping(uint256 => participant) public RET;
+    error InvalidBattery(uint256 batteryId);
+    error InvalidParticipant(Role role, uint256 participantId);
+    error InvalidAddress();
+    error EmptyName();
+    error AlreadyRegistered(Role role, address addr);
+    error NotRegistered(Role role);
+    error ParticipantInactive(Role role, uint256 participantId);
+    error MissingActiveParticipant(Role role);
+    error WrongStage(Stage expected, Stage actual);
+    error NotBatteryRetailer(uint256 batteryId);
 
-    //Reverse lookups (address => id) so role checks don't loop over every participant
-    mapping(address => uint256) public rmsIdOf;
-    mapping(address => uint256) public manIdOf;
-    mapping(address => uint256) public disIdOf;
-    mapping(address => uint256) public retIdOf;
+    /// @notice A participant was registered
+    /// @param role The participant's role
+    /// @param participantId The participant's id within that role
+    /// @param addr The participant's address
+    /// @param name The participant's name
+    event ParticipantAdded(Role indexed role, uint256 indexed participantId, address indexed addr, string name);
 
-    modifier validBattery(uint256 _batteryID) {
-        require(_batteryID > 0 && _batteryID <= batteryCtr, "Invalid battery ID");
+    /// @notice A participant's name or place was changed
+    /// @param role The participant's role
+    /// @param participantId The participant's id within that role
+    /// @param name The new name
+    /// @param place The new place
+    event ParticipantUpdated(Role indexed role, uint256 indexed participantId, string name, string place);
+
+    /// @notice A participant was deactivated
+    /// @param role The participant's role
+    /// @param participantId The participant's id within that role
+    event ParticipantDeactivated(Role indexed role, uint256 indexed participantId);
+
+    /// @notice A battery was ordered
+    /// @param batteryId The new battery's id
+    /// @param name The battery's name
+    event BatteryAdded(uint256 indexed batteryId, string name);
+
+    /// @notice A battery moved to a new stage
+    /// @dev Stage history lives in events rather than storage. participantId is 0 for the
+    /// initial Ordered stage, which is performed by the owner.
+    /// @param batteryId The battery that moved
+    /// @param stage The stage it moved to
+    /// @param participantId The id (within its role) of the participant that moved it
+    /// @param by The address that sent the transaction
+    /// @param timestamp The block timestamp
+    /// @param location Optional location given by the participant
+    /// @param note Optional note given by the participant
+    event StageChanged(
+        uint256 indexed batteryId,
+        Stage stage,
+        uint256 participantId,
+        address indexed by,
+        uint256 timestamp,
+        string location,
+        string note
+    );
+
+    /// @notice Number of batteries ordered so far; ids run from 1 to batteryCount
+    uint256 public batteryCount;
+
+    /// @notice Battery records by id
+    mapping(uint256 => Battery) public batteries;
+
+    /// @notice Number of participants ever registered per role, including deactivated ones
+    mapping(Role => uint256) public participantCount;
+
+    /// @notice Number of active participants per role
+    mapping(Role => uint256) public activeParticipantCount;
+
+    /// @notice Participant records by role and id
+    mapping(Role => mapping(uint256 => Participant)) public participants;
+
+    /// @notice Participant id by role and address (0 if not registered), so role checks don't loop
+    mapping(Role => mapping(address => uint256)) public participantIdOf;
+
+    constructor() Ownable(msg.sender) {}
+
+    modifier validBattery(uint256 batteryId) {
+        if (batteryId == 0 || batteryId > batteryCount) revert InvalidBattery(batteryId);
         _;
     }
 
-    modifier validParticipant(address _address, string memory _name) {
-        require(_address != address(0), "Invalid address");
-        require(bytes(_name).length > 0, "Name is required");
-        _;
+    /// @notice Blocks ordering and all stage steps until unpaused
+    function pause() external onlyOwner {
+        _pause();
     }
 
-    function showStage(uint256 _batteryID)
-        public
+    /// @notice Lifts a pause
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    // ---------------------------------------------------------------- participants
+
+    /// @notice Registers a participant for a role. An address can hold several roles,
+    /// but only once per role.
+    /// @param role The role to register for
+    /// @param addr The participant's address
+    /// @param name The participant's name (required)
+    /// @param place Where the participant is based
+    function addParticipant(
+        Role role,
+        address addr,
+        string calldata name,
+        string calldata place
+    ) external onlyOwner {
+        if (addr == address(0)) revert InvalidAddress();
+        if (bytes(name).length == 0) revert EmptyName();
+        if (participantIdOf[role][addr] != 0) revert AlreadyRegistered(role, addr);
+
+        uint256 id = ++participantCount[role];
+        participants[role][id] = Participant(addr, true, id, name, place);
+        participantIdOf[role][addr] = id;
+        ++activeParticipantCount[role];
+        emit ParticipantAdded(role, id, addr, name);
+    }
+
+    /// @notice Changes a participant's name and place. The address can't be changed.
+    /// @param role The participant's role
+    /// @param id The participant's id within that role
+    /// @param name The new name (required)
+    /// @param place The new place
+    function updateParticipant(
+        Role role,
+        uint256 id,
+        string calldata name,
+        string calldata place
+    ) external onlyOwner {
+        Participant storage p = _participant(role, id);
+        if (bytes(name).length == 0) revert EmptyName();
+        p.name = name;
+        p.place = place;
+        emit ParticipantUpdated(role, id, name, place);
+    }
+
+    /// @notice Soft-deactivates a participant. The record is kept so batteries it already
+    /// handled still show who handled them.
+    /// @param role The participant's role
+    /// @param id The participant's id within that role
+    function deactivateParticipant(Role role, uint256 id) external onlyOwner {
+        Participant storage p = _participant(role, id);
+        if (!p.active) revert ParticipantInactive(role, id);
+        p.active = false;
+        --activeParticipantCount[role];
+        emit ParticipantDeactivated(role, id);
+    }
+
+    // ---------------------------------------------------------------- batteries
+
+    /// @notice Human-readable name of a battery's current stage
+    /// @param batteryId The battery to look up
+    /// @return The stage name, e.g. "Manufacturing Stage"
+    function stageName(uint256 batteryId)
+        external
         view
-        validBattery(_batteryID)
+        validBattery(batteryId)
         returns (string memory)
     {
-        STAGE stage = BatteryStock[_batteryID].stage;
-        if (stage == STAGE.Init) return "Battery Ordered";
-        if (stage == STAGE.RawMaterialSupply) return "Raw Material Supply Stage";
-        if (stage == STAGE.Manufacture) return "Manufacturing Stage";
-        if (stage == STAGE.Distribution) return "Distribution Stage";
-        if (stage == STAGE.Retail) return "Retail Stage";
+        Stage stage = batteries[batteryId].stage;
+        if (stage == Stage.Ordered) return "Battery Ordered";
+        if (stage == Stage.RawMaterialSupply) return "Raw Material Supply Stage";
+        if (stage == Stage.Manufacture) return "Manufacturing Stage";
+        if (stage == Stage.Distribution) return "Distribution Stage";
+        if (stage == Stage.Retail) return "Retail Stage";
         return "Battery Sold";
     }
 
-    function addRMS(
-        address _address,
-        string memory _name,
-        string memory _place
-    ) public onlyByOwner validParticipant(_address, _name) {
-        require(rmsIdOf[_address] == 0, "Address is already a raw material supplier");
-        rmsCtr++;
-        RMS[rmsCtr] = participant(_address, rmsCtr, _name, _place);
-        rmsIdOf[_address] = rmsCtr;
-        emit ParticipantAdded("RawMaterialSupplier", rmsCtr, _address, _name);
-    }
-
-    function addManufacturer(
-        address _address,
-        string memory _name,
-        string memory _place
-    ) public onlyByOwner validParticipant(_address, _name) {
-        require(manIdOf[_address] == 0, "Address is already a manufacturer");
-        manCtr++;
-        MAN[manCtr] = participant(_address, manCtr, _name, _place);
-        manIdOf[_address] = manCtr;
-        emit ParticipantAdded("Manufacturer", manCtr, _address, _name);
-    }
-
-    function addDistributor(
-        address _address,
-        string memory _name,
-        string memory _place
-    ) public onlyByOwner validParticipant(_address, _name) {
-        require(disIdOf[_address] == 0, "Address is already a distributor");
-        disCtr++;
-        DIS[disCtr] = participant(_address, disCtr, _name, _place);
-        disIdOf[_address] = disCtr;
-        emit ParticipantAdded("Distributor", disCtr, _address, _name);
-    }
-
-    function addRetailer(
-        address _address,
-        string memory _name,
-        string memory _place
-    ) public onlyByOwner validParticipant(_address, _name) {
-        require(retIdOf[_address] == 0, "Address is already a retailer");
-        retCtr++;
-        RET[retCtr] = participant(_address, retCtr, _name, _place);
-        retIdOf[_address] = retCtr;
-        emit ParticipantAdded("Retailer", retCtr, _address, _name);
-    }
-
-    function addBattery(string memory _name, string memory _description)
-        public
-        onlyByOwner
+    /// @notice Orders a new battery. Every role needs at least one active participant.
+    /// @param name The battery's name (required)
+    /// @param description A free-text description
+    function addBattery(string calldata name, string calldata description)
+        external
+        onlyOwner
+        whenNotPaused
     {
-        require(
-            (rmsCtr > 0) && (manCtr > 0) && (disCtr > 0) && (retCtr > 0),
-            "Register at least one participant for every role first"
-        );
-        require(bytes(_name).length > 0, "Name is required");
-        batteryCtr++;
-        BatteryStock[batteryCtr] = battery(
-            batteryCtr,
-            _name,
-            _description,
-            0,
-            0,
-            0,
-            0,
-            STAGE.Init
-        );
-        emit BatteryAdded(batteryCtr, _name);
+        for (uint8 r = 0; r < uint8(type(Role).max) + 1; ++r) {
+            if (activeParticipantCount[Role(r)] == 0) revert MissingActiveParticipant(Role(r));
+        }
+        if (bytes(name).length == 0) revert EmptyName();
+
+        uint256 id = ++batteryCount;
+        batteries[id] = Battery(id, name, description, 0, 0, 0, 0, Stage.Ordered);
+        emit BatteryAdded(id, name);
+        emit StageChanged(id, Stage.Ordered, 0, msg.sender, block.timestamp, "", "");
     }
 
-    function RMSsupply(uint256 _batteryID) public validBattery(_batteryID) {
-        uint256 _id = rmsIdOf[msg.sender];
-        require(_id > 0, "Caller is not a registered raw material supplier");
-        require(BatteryStock[_batteryID].stage == STAGE.Init, "Battery is not in the Ordered stage");
-        BatteryStock[_batteryID].RMSid = _id;
-        BatteryStock[_batteryID].stage = STAGE.RawMaterialSupply;
-        emit StageChanged(_batteryID, STAGE.RawMaterialSupply, msg.sender);
+    /// @notice Ordered -> Raw Material Supply. Caller must be an active raw material supplier.
+    /// @param batteryId The battery to move
+    /// @param location Optional location, stored only in the StageChanged event
+    /// @param note Optional note, stored only in the StageChanged event
+    function supplyRawMaterials(uint256 batteryId, string calldata location, string calldata note) external {
+        batteries[batteryId].supplierId =
+            _advance(batteryId, Role.RawMaterialSupplier, Stage.Ordered, location, note);
     }
 
-    function Manufacturing(uint256 _batteryID) public validBattery(_batteryID) {
-        uint256 _id = manIdOf[msg.sender];
-        require(_id > 0, "Caller is not a registered manufacturer");
-        require(BatteryStock[_batteryID].stage == STAGE.RawMaterialSupply, "Battery is not in the Raw Material Supply stage");
-        BatteryStock[_batteryID].MANid = _id;
-        BatteryStock[_batteryID].stage = STAGE.Manufacture;
-        emit StageChanged(_batteryID, STAGE.Manufacture, msg.sender);
+    /// @notice Raw Material Supply -> Manufacturing. Caller must be an active manufacturer.
+    /// @param batteryId The battery to move
+    /// @param location Optional location, stored only in the StageChanged event
+    /// @param note Optional note, stored only in the StageChanged event
+    function manufacture(uint256 batteryId, string calldata location, string calldata note) external {
+        batteries[batteryId].manufacturerId =
+            _advance(batteryId, Role.Manufacturer, Stage.RawMaterialSupply, location, note);
     }
 
-    function Distribute(uint256 _batteryID) public validBattery(_batteryID) {
-        uint256 _id = disIdOf[msg.sender];
-        require(_id > 0, "Caller is not a registered distributor");
-        require(BatteryStock[_batteryID].stage == STAGE.Manufacture, "Battery is not in the Manufacturing stage");
-        BatteryStock[_batteryID].DISid = _id;
-        BatteryStock[_batteryID].stage = STAGE.Distribution;
-        emit StageChanged(_batteryID, STAGE.Distribution, msg.sender);
+    /// @notice Manufacturing -> Distribution. Caller must be an active distributor.
+    /// @param batteryId The battery to move
+    /// @param location Optional location, stored only in the StageChanged event
+    /// @param note Optional note, stored only in the StageChanged event
+    function distribute(uint256 batteryId, string calldata location, string calldata note) external {
+        batteries[batteryId].distributorId =
+            _advance(batteryId, Role.Distributor, Stage.Manufacture, location, note);
     }
 
-    function Retail(uint256 _batteryID) public validBattery(_batteryID) {
-        uint256 _id = retIdOf[msg.sender];
-        require(_id > 0, "Caller is not a registered retailer");
-        require(BatteryStock[_batteryID].stage == STAGE.Distribution, "Battery is not in the Distribution stage");
-        BatteryStock[_batteryID].RETid = _id;
-        BatteryStock[_batteryID].stage = STAGE.Retail;
-        emit StageChanged(_batteryID, STAGE.Retail, msg.sender);
+    /// @notice Distribution -> Retail. Caller must be an active retailer.
+    /// @param batteryId The battery to move
+    /// @param location Optional location, stored only in the StageChanged event
+    /// @param note Optional note, stored only in the StageChanged event
+    function retail(uint256 batteryId, string calldata location, string calldata note) external {
+        batteries[batteryId].retailerId =
+            _advance(batteryId, Role.Retailer, Stage.Distribution, location, note);
     }
 
-    function sold(uint256 _batteryID) public validBattery(_batteryID) {
-        uint256 _id = retIdOf[msg.sender];
-        require(_id > 0, "Caller is not a registered retailer");
-        require(_id == BatteryStock[_batteryID].RETid, "Only the retailer holding this battery can sell it");
-        require(BatteryStock[_batteryID].stage == STAGE.Retail, "Battery is not in the Retail stage");
-        BatteryStock[_batteryID].stage = STAGE.Sold;
-        emit StageChanged(_batteryID, STAGE.Sold, msg.sender);
+    /// @notice Retail -> Sold. Only the retailer that took the battery into Retail can sell it.
+    /// @param batteryId The battery to move
+    /// @param location Optional location, stored only in the StageChanged event
+    /// @param note Optional note, stored only in the StageChanged event
+    function markSold(uint256 batteryId, string calldata location, string calldata note) external {
+        uint256 retailerId = _advance(batteryId, Role.Retailer, Stage.Retail, location, note);
+        if (retailerId != batteries[batteryId].retailerId) revert NotBatteryRetailer(batteryId);
+    }
+
+    // ---------------------------------------------------------------- internal
+
+    function _participant(Role role, uint256 id) private view returns (Participant storage) {
+        if (id == 0 || id > participantCount[role]) revert InvalidParticipant(role, id);
+        return participants[role][id];
+    }
+
+    /// @dev Checks the caller's role and the battery's stage, moves the battery to the
+    /// next stage and returns the caller's participant id.
+    function _advance(
+        uint256 batteryId,
+        Role role,
+        Stage from,
+        string calldata location,
+        string calldata note
+    ) private whenNotPaused validBattery(batteryId) returns (uint256 participantId) {
+        participantId = participantIdOf[role][msg.sender];
+        if (participantId == 0) revert NotRegistered(role);
+        if (!participants[role][participantId].active) revert ParticipantInactive(role, participantId);
+
+        Battery storage b = batteries[batteryId];
+        if (b.stage != from) revert WrongStage(from, b.stage);
+
+        Stage next = Stage(uint8(from) + 1);
+        b.stage = next;
+        emit StageChanged(batteryId, next, participantId, msg.sender, block.timestamp, location, note);
     }
 }
