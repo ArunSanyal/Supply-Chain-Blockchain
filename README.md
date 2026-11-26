@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ArunSanyal/Supply-Chain-Blockchain/actions/workflows/ci.yml/badge.svg)](https://github.com/ArunSanyal/Supply-Chain-Blockchain/actions/workflows/ci.yml)
 
-This project tracks a battery as it moves through a supply chain, from the order to the final sale. Each handoff is a transaction on an Ethereum chain, so there is a permanent record of who handled the battery at each stage, and nobody can edit that record afterwards. It is a Solidity smart contract with a React frontend that reads from it directly or sends transactions through MetaMask.
+This project tracks a battery as it moves through a supply chain, from the order to the final sale. Each handoff is a transaction on an Ethereum chain that emits a `StageChanged` event, and those events can't be changed afterwards, so they are a permanent record of who moved the battery at each stage and when. It is a Solidity smart contract with a React frontend that reads from it directly or sends transactions through MetaMask.
 
 ## Features
 
@@ -199,7 +199,7 @@ This project started as a fork of https://github.com/Faizack/Supply-Chain-Blockc
 
 What I changed:
 
-- Contract: renamed it from medicine to battery, moved to Solidity 0.8.24, added `Ownable2Step` and `Pausable`, merged the four registration functions into `addParticipant(role, ...)`, added `updateParticipant`, `deactivateParticipant` and `reactivateParticipant`, replaced the bare `require` checks, which gave no reason, with custom errors, added events for every change, replaced role lookup loops with mappings, and added checks for duplicate registrations, the zero address, empty names and invalid battery IDs.
+- Contract: renamed it from medicine to battery, moved to Solidity 0.8.24, added `Ownable2Step` and `Pausable`, merged the four registration functions into `addParticipant(role, ...)`, added `updateParticipant`, `deactivateParticipant` and `reactivateParticipant`, replaced the bare `require` checks, which gave no reason, with custom errors, added events for every change, replaced role lookup loops with mappings, added checks for duplicate registrations, the zero address and empty names, and made `stageName` reject battery IDs that don't exist. The original's stage functions already rejected invalid battery IDs.
 - Tooling: moved from Truffle and Ganache to Hardhat, wrote the test suite, and added coverage, the gas report, solhint, Slither and the CI workflow. The frontend now reads only the ABI and `deployments.json` instead of Truffle build files.
 - Frontend: moved the wallet and contract code, which was copied into four pages, into one hook; added transaction simulation and readable errors; gave each battery a track URL with an event timeline and a QR code that links to it; added read-only mode, inline transaction status instead of `alert()`, labels on every input, and the seed script.
 
