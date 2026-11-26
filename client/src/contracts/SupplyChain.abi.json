@@ -135,6 +135,22 @@
         "type": "uint256"
       }
     ],
+    "name": "ParticipantAlreadyActive",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum SupplyChain.Role",
+        "name": "role",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "participantId",
+        "type": "uint256"
+      }
+    ],
     "name": "ParticipantInactive",
     "type": "error"
   },
@@ -259,6 +275,25 @@
       }
     ],
     "name": "ParticipantDeactivated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "enum SupplyChain.Role",
+        "name": "role",
+        "type": "uint8"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "participantId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ParticipantReactivated",
     "type": "event"
   },
   {
@@ -724,6 +759,24 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum SupplyChain.Role",
+        "name": "role",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "reactivateParticipant",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

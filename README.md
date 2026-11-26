@@ -12,7 +12,7 @@ Screenshots: to be added.
 ## Features
 
 - A battery goes through six stages in a fixed order: Ordered, Raw Material Supply, Manufacturing, Distribution, Retail, Sold. The contract rejects a step from the wrong role, a skipped stage or a repeated one.
-- The owner registers participants for four roles (raw material supplier, manufacturer, distributor, retailer), and can edit or deactivate them. Deactivated participants keep their record, so the history still shows who handled what.
+- The owner registers participants for four roles (raw material supplier, manufacturer, distributor, retailer), and can edit, deactivate or reactivate them. Deactivated participants keep their record, so the history still shows who handled what, and can be reactivated later.
 - Each stage step can carry a location and a note. They are stored in the `StageChanged` event with the participant, their address and the block time.
 - Each battery has its own page at `/track/<id>` with a timeline of every stage, built from those events, and a QR code that links back to the page.
 - The owner can pause the contract, which blocks ordering and all stage steps. Ownership moves in two steps (`transferOwnership`, then `acceptOwnership` from the new address).
@@ -150,27 +150,28 @@ To try the flow by hand: as the owner, register one participant per role on Regi
 ## Tests, coverage and gas
 
 ```bash
-npm test                    # 31 contract tests on Hardhat's in-process chain
+npm test                    # 35 contract tests on Hardhat's in-process chain
 npm run coverage            # tests plus a coverage report in coverage/
 npm run gas                 # tests plus a gas table per function
 npm run lint:sol            # solhint, fails on any warning
 cd client && npm run lint   # ESLint, fails on any warning
 ```
 
-The tests are in `test/supplychain.test.js`. Every failure case checks for the exact custom error and its arguments. They cover access control, registration rules, updating and deactivating participants, the full stage lifecycle, skipped and repeated stages, the Sold check, the `StageChanged` event fields, pausing and the two-step ownership transfer. `npm run coverage` reports 100% of statements, branches, functions and lines in `SupplyChain.sol`.
+The tests are in `test/supplychain.test.js`. Every failure case checks for the exact custom error and its arguments. They cover access control, registration rules, updating, deactivating and reactivating participants (including selling a battery whose retailer was deactivated and then reactivated), the full stage lifecycle, skipped and repeated stages, the Sold check, the `StageChanged` event fields, pausing and the two-step ownership transfer. `npm run coverage` reports 100% of statements, branches, functions and lines in `SupplyChain.sol`.
 
 Average gas per call from `npm run gas`, using the test inputs. Calls that store longer strings cost more.
 
 | Function | Average gas |
 | --- | --- |
-| Deployment | 1,757,852 |
-| addParticipant | 184,631 |
-| addBattery | 143,802 |
-| supplyRawMaterials | 80,632 |
+| Deployment | 1,815,536 |
+| addParticipant | 183,741 |
+| addBattery | 143,819 |
+| supplyRawMaterials | 80,581 |
 | manufacture / distribute / retail | about 63,200 |
-| markSold | 43,411 |
+| reactivateParticipant | 49,775 |
+| markSold | 43,298 |
 | updateParticipant | 42,211 |
-| deactivateParticipant | 33,511 |
+| deactivateParticipant | 33,992 |
 
 `supplyRawMaterials` costs more than the later steps because it changes the battery's stage from Ordered, which is stored as 0, and writing a non-zero value into a zero storage slot costs more than changing a non-zero one. `markSold` is the cheapest step because it doesn't record a participant ID.
 
@@ -181,7 +182,7 @@ CI (`.github/workflows/ci.yml`) runs on every push and pull request. It runs sol
 - Stage history lives in events, not storage. The battery record only keeps its current stage and the four participant IDs; who moved it, when, where and the note are in `StageChanged` events. This keeps most stage steps at about 63,000 gas. The cost is that other contracts can't read the history, and the frontend has to query logs. To keep that query small, `deploy.js` records the deployment block and the track page searches from there.
 - Role checks use mappings from address to participant ID per role, so checking a caller is one lookup instead of a loop over all participants.
 - Errors are custom errors with arguments (such as `WrongStage(expected, actual)`), which are cheaper than revert strings and let the frontend write a precise message. The frontend simulates every transaction with `eth_call` first, so a step that would fail shows its reason before MetaMask asks for a signature.
-- Participants are deactivated, never deleted, so old history stays readable. The trade-off is that there is no reactivation, and a deactivated address can't be registered again for the same role.
+- Participants are deactivated, never deleted, so old history stays readable. A deactivated participant can be reactivated by the owner, but its address can't be registered again as a new participant for the same role. Reactivation matters for batteries in Retail: only the retailer holding a battery can mark it Sold, so without it, deactivating that retailer would leave the battery stuck.
 - Pausing blocks ordering and stage steps but not participant admin, so the owner can still deactivate someone while the contract is paused.
 - One address may hold several roles. I allowed this so the whole flow can be tried with one MetaMask account. In a real deployment you would probably want the contract to forbid it.
 - The QR code holds a link to `/track/<id>` rather than a copy of the data, so a scan always shows the current record. It only works where the app is hosted at an address the scanner can reach.
@@ -203,7 +204,7 @@ This project started as a fork of https://github.com/Faizack/Supply-Chain-Blockc
 
 What I changed:
 
-- Contract: renamed it from medicine to battery, moved to Solidity 0.8.24, added `Ownable2Step` and `Pausable`, merged the four registration functions into `addParticipant(role, ...)`, added `updateParticipant` and `deactivateParticipant`, replaced the bare `require` checks, which gave no reason, with custom errors, added events for every change, replaced role lookup loops with mappings, and added checks for duplicate registrations, the zero address, empty names and invalid battery IDs.
+- Contract: renamed it from medicine to battery, moved to Solidity 0.8.24, added `Ownable2Step` and `Pausable`, merged the four registration functions into `addParticipant(role, ...)`, added `updateParticipant`, `deactivateParticipant` and `reactivateParticipant`, replaced the bare `require` checks, which gave no reason, with custom errors, added events for every change, replaced role lookup loops with mappings, and added checks for duplicate registrations, the zero address, empty names and invalid battery IDs.
 - Tooling: moved from Truffle and Ganache to Hardhat, wrote the test suite, and added coverage, the gas report, solhint, Slither and the CI workflow. The frontend now reads only the ABI and `deployments.json` instead of Truffle build files.
 - Frontend: moved the wallet and contract code, which was copied into four pages, into one hook; added transaction simulation and readable errors; gave each battery a track URL with an event timeline and a QR code that links to it; added read-only mode, inline transaction status instead of `alert()`, labels on every input, and the seed script.
 

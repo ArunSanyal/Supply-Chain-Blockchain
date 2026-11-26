@@ -158,6 +158,59 @@ describe("SupplyChain", () => {
                 .to.be.revertedWithCustomError(sc, "MissingActiveParticipant")
                 .withArgs(Role.Retailer);
         });
+
+        it("rejects re-registering a deactivated address for the same role", async () => {
+            const { sc, ret } = await loadFixture(registeredFixture);
+            await sc.deactivateParticipant(Role.Retailer, 1);
+            await expect(sc.addParticipant(Role.Retailer, ret.address, "PowerMart", "Mumbai"))
+                .to.be.revertedWithCustomError(sc, "AlreadyRegistered")
+                .withArgs(Role.Retailer, ret.address);
+        });
+
+        it("lets the owner reactivate a participant and emits an event", async () => {
+            const { sc } = await loadFixture(registeredFixture);
+            await sc.deactivateParticipant(Role.Retailer, 1);
+            await expect(sc.reactivateParticipant(Role.Retailer, 1))
+                .to.emit(sc, "ParticipantReactivated")
+                .withArgs(Role.Retailer, 1);
+            expect((await sc.participants(Role.Retailer, 1)).active).to.equal(true);
+            expect(await sc.activeParticipantCount(Role.Retailer)).to.equal(1);
+        });
+
+        it("rejects reactivation from non-owners, of unknown ids, or of active participants", async () => {
+            const { sc, stranger } = await loadFixture(registeredFixture);
+            await sc.deactivateParticipant(Role.Retailer, 1);
+            await expect(sc.connect(stranger).reactivateParticipant(Role.Retailer, 1))
+                .to.be.revertedWithCustomError(sc, "OwnableUnauthorizedAccount")
+                .withArgs(stranger.address);
+            await expect(sc.reactivateParticipant(Role.Retailer, 2))
+                .to.be.revertedWithCustomError(sc, "InvalidParticipant")
+                .withArgs(Role.Retailer, 2);
+            await expect(sc.reactivateParticipant(Role.Manufacturer, 1))
+                .to.be.revertedWithCustomError(sc, "ParticipantAlreadyActive")
+                .withArgs(Role.Manufacturer, 1);
+        });
+
+        it("lets a battery held by a deactivated retailer be sold after reactivation", async () => {
+            const f = await loadFixture(orderedFixture);
+            const { sc, ret, otherRet } = f;
+            await advanceToRetail(f);
+            await sc.addParticipant(Role.Retailer, otherRet.address, "OtherMart", "Delhi");
+            await sc.deactivateParticipant(Role.Retailer, 1);
+
+            // While deactivated, neither the holding retailer nor another retailer can sell it
+            await expect(sc.connect(ret).markSold(1, "", ""))
+                .to.be.revertedWithCustomError(sc, "ParticipantInactive")
+                .withArgs(Role.Retailer, 1);
+            await expect(sc.connect(otherRet).markSold(1, "", ""))
+                .to.be.revertedWithCustomError(sc, "NotBatteryRetailer")
+                .withArgs(1);
+
+            await sc.reactivateParticipant(Role.Retailer, 1);
+            await expect(sc.connect(ret).markSold(1, "", ""))
+                .to.emit(sc, "StageChanged");
+            expect((await sc.batteries(1)).stage).to.equal(Stage.Sold);
+        });
     });
 
     describe("batteries", () => {

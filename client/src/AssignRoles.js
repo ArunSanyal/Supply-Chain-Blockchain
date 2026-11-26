@@ -75,7 +75,7 @@ function AssignRoles() {
     };
 
     const deactivate = (role, p) => {
-        if (window.confirm(`Deactivate ${p.name}? They will no longer be able to act, but their history is kept.`)) {
+        if (window.confirm(`Deactivate ${p.name}? They will no longer be able to act until reactivated, but their history is kept.`)) {
             runTx(`Deactivate ${p.name}`, contract.methods.deactivateParticipant(role, p.id));
         }
     };
@@ -190,8 +190,10 @@ function AssignRoles() {
                                     <td>{p.active ? "Active" : "Deactivated"}</td>
                                     <td>
                                         <button className="btn btn-link btn-sm" disabled={busy} onClick={() => startEdit(key, p)}>Edit</button>
-                                        {p.active && (
+                                        {p.active ? (
                                             <button className="btn btn-link btn-sm text-danger" disabled={busy} onClick={() => deactivate(role, p)}>Deactivate</button>
+                                        ) : (
+                                            <button className="btn btn-link btn-sm text-success" disabled={busy} onClick={() => runTx(`Reactivate ${p.name}`, contract.methods.reactivateParticipant(role, p.id))}>Reactivate</button>
                                         )}
                                     </td>
                                 </tr>

@@ -95,6 +95,7 @@ const CUSTOM_ERROR_TEXT = {
     AlreadyRegistered: ([role]) => `That address is already registered as a ${roleLabel(role)}.`,
     NotRegistered: ([role]) => `Your account is not registered as a ${roleLabel(role)}.`,
     ParticipantInactive: ([role, id]) => `${roleLabel(role)} ${id} has been deactivated.`,
+    ParticipantAlreadyActive: ([role, id]) => `${roleLabel(role)} ${id} is already active.`,
     MissingActiveParticipant: ([role]) => `Register at least one active ${roleLabel(role)} first.`,
     WrongStage: ([expected, actual]) => `The battery must be in the ${stageLabel(expected)} stage, but it is in ${stageLabel(actual)}.`,
     NotBatteryRetailer: () => "Only the retailer holding this battery can mark it sold.",

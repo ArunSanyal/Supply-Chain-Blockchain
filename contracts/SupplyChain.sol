@@ -51,6 +51,7 @@ contract SupplyChain is Ownable2Step, Pausable {
     error AlreadyRegistered(Role role, address addr);
     error NotRegistered(Role role);
     error ParticipantInactive(Role role, uint256 participantId);
+    error ParticipantAlreadyActive(Role role, uint256 participantId);
     error MissingActiveParticipant(Role role);
     error WrongStage(Stage expected, Stage actual);
     error NotBatteryRetailer(uint256 batteryId);
@@ -73,6 +74,11 @@ contract SupplyChain is Ownable2Step, Pausable {
     /// @param role The participant's role
     /// @param participantId The participant's id within that role
     event ParticipantDeactivated(Role indexed role, uint256 indexed participantId);
+
+    /// @notice A deactivated participant was restored
+    /// @param role The participant's role
+    /// @param participantId The participant's id within that role
+    event ParticipantReactivated(Role indexed role, uint256 indexed participantId);
 
     /// @notice A battery was ordered
     /// @param batteryId The new battery's id
@@ -187,6 +193,18 @@ contract SupplyChain is Ownable2Step, Pausable {
         p.active = false;
         --activeParticipantCount[role];
         emit ParticipantDeactivated(role, id);
+    }
+
+    /// @notice Restores a deactivated participant, so it can act again. This is how a
+    /// battery held by a deactivated retailer can still be marked Sold.
+    /// @param role The participant's role
+    /// @param id The participant's id within that role
+    function reactivateParticipant(Role role, uint256 id) external onlyOwner {
+        Participant storage p = _participant(role, id);
+        if (p.active) revert ParticipantAlreadyActive(role, id);
+        p.active = true;
+        ++activeParticipantCount[role];
+        emit ParticipantReactivated(role, id);
     }
 
     // ---------------------------------------------------------------- batteries
