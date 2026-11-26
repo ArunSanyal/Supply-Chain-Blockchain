@@ -56,9 +56,6 @@ const styles = {
         borderRadius: '10px',
         cursor: 'pointer',
         transition: 'background 0.3s',
-    },
-    buttonHover: {
-        backgroundColor: '#6B705C', // Darker on hover
     }
 }
 
