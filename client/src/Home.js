@@ -11,7 +11,7 @@ function Home() {
     return (
         <div style={styles.container}>
             <div style={styles.content}>
-                <h3> Supply Chain Manager</h3>
+                <h1 className="h3">Supply Chain Manager</h1>
                 <div style={styles.buttonGroup}>
                     <button onClick={() => redirectTo('/roles')} style={styles.button}>Register Roles</button>
                     <button onClick={() => redirectTo('/addbattery')} style={styles.button}>Order Batteries</button>

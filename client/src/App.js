@@ -4,6 +4,7 @@ import Home from './Home';
 import AddBattery from './AddBattery';
 import Supply from './Supply'
 import Track from './Track'
+import NotFound from './NotFound'
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom"
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path="/addbattery" component={AddBattery} />
           <Route path="/supply" component={Supply} />
           <Route path="/track/:id?" component={Track} />
+          <Route component={NotFound} />
         </Switch>
       </Router>
     </div>
