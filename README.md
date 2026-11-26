@@ -4,11 +4,6 @@
 
 This project tracks a battery as it moves through a supply chain, from the order to the final sale. Each handoff is a transaction on an Ethereum chain, so there is a permanent record of who handled the battery at each stage, and nobody can edit that record afterwards. It is a Solidity smart contract with a React frontend that reads from it directly or sends transactions through MetaMask.
 
-Live demo: not deployed yet. I plan to deploy the contract to the Sepolia testnet and host the frontend, and will put the link here.
-
-<!-- TODO: add screenshots or a short GIF of the track page timeline and the supply flow -->
-Screenshots: to be added.
-
 ## Features
 
 - A battery goes through six stages in a fixed order: Ordered, Raw Material Supply, Manufacturing, Distribution, Retail, Sold. The contract rejects a step from the wrong role, a skipped stage or a repeated one.
