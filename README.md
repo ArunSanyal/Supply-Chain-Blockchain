@@ -15,7 +15,7 @@ Screenshots: to be added.
 - The owner registers participants for four roles (raw material supplier, manufacturer, distributor, retailer), and can edit, deactivate or reactivate them. Deactivated participants keep their record, so the history still shows who handled what, and can be reactivated later.
 - Each stage step can carry a location and a note. They are stored in the `StageChanged` event with the participant, their address and the block time.
 - Each battery has its own page at `/track/<id>` with a timeline of every stage, built from those events, and a QR code that links back to the page.
-- The owner can pause the contract, which blocks ordering and all stage steps. Ownership moves in two steps (`transferOwnership`, then `acceptOwnership` from the new address).
+- The owner can pause the contract, which blocks ordering and all stage steps. Ownership moves in two steps (`transferOwnership`, then `acceptOwnership` from the new address), and can't be renounced, because the contract can't be run without an owner.
 - Without a wallet the app runs read-only: every page shows the contract's data and the forms ask you to connect a wallet.
 - Failed transactions show the contract's reason in plain words (for example "The battery must be in the Distribution stage, but it is in Manufacturing.") under the form that sent them. Pending and confirmed transactions are shown the same way.
 - A seed script fills a local chain with demo participants and six batteries, one at each stage.
@@ -150,20 +150,20 @@ To try the flow by hand: as the owner, register one participant per role on Regi
 ## Tests, coverage and gas
 
 ```bash
-npm test                    # 35 contract tests on Hardhat's in-process chain
+npm test                    # 38 contract tests on Hardhat's in-process chain
 npm run coverage            # tests plus a coverage report in coverage/
 npm run gas                 # tests plus a gas table per function
 npm run lint:sol            # solhint, fails on any warning
 cd client && npm run lint   # ESLint, fails on any warning
 ```
 
-The tests are in `test/supplychain.test.js`. Every failure case checks for the exact custom error and its arguments. They cover access control, registration rules, updating, deactivating and reactivating participants (including selling a battery whose retailer was deactivated and then reactivated), the full stage lifecycle, skipped and repeated stages, the Sold check, the `StageChanged` event fields, pausing and the two-step ownership transfer. `npm run coverage` reports 100% of statements, branches, functions and lines in `SupplyChain.sol`.
+The tests are in `test/supplychain.test.js`. Every failure case checks for the exact custom error and its arguments. They cover access control, registration rules, updating, deactivating and reactivating participants (including selling a battery whose retailer was deactivated and then reactivated), the full stage lifecycle, skipped and repeated stages, the Sold check, the `StageChanged` event fields, pausing, the two-step ownership transfer (including cancelling it), and the disabled `renounceOwnership`. `npm run coverage` reports 100% of statements, branches, functions and lines in `SupplyChain.sol`.
 
 Average gas per call from `npm run gas`, using the test inputs. Calls that store longer strings cost more.
 
 | Function | Average gas |
 | --- | --- |
-| Deployment | 1,815,536 |
+| Deployment | 1,817,717 |
 | addParticipant | 183,741 |
 | addBattery | 143,819 |
 | supplyRawMaterials | 80,581 |
@@ -171,7 +171,7 @@ Average gas per call from `npm run gas`, using the test inputs. Calls that store
 | reactivateParticipant | 49,775 |
 | markSold | 43,298 |
 | updateParticipant | 42,211 |
-| deactivateParticipant | 33,992 |
+| deactivateParticipant | 33,948 |
 
 `supplyRawMaterials` costs more than the later steps because it changes the battery's stage from Ordered, which is stored as 0, and writing a non-zero value into a zero storage slot costs more than changing a non-zero one. `markSold` is the cheapest step because it doesn't record a participant ID.
 

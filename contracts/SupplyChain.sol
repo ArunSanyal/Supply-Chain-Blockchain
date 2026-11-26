@@ -55,6 +55,7 @@ contract SupplyChain is Ownable2Step, Pausable {
     error MissingActiveParticipant(Role role);
     error WrongStage(Stage expected, Stage actual);
     error NotBatteryRetailer(uint256 batteryId);
+    error RenounceOwnershipDisabled();
 
     /// @notice A participant was registered
     /// @param role The participant's role
@@ -138,6 +139,12 @@ contract SupplyChain is Ownable2Step, Pausable {
     /// @notice Lifts a pause
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /// @notice Disabled. Without an owner nobody could register participants, order
+    /// batteries or lift a pause, so ownership can only be transferred, not renounced.
+    function renounceOwnership() public pure override {
+        revert RenounceOwnershipDisabled();
     }
 
     // ---------------------------------------------------------------- participants

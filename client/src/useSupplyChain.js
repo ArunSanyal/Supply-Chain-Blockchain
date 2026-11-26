@@ -100,6 +100,7 @@ const CUSTOM_ERROR_TEXT = {
     WrongStage: ([expected, actual]) => `The battery must be in the ${stageLabel(expected)} stage, but it is in ${stageLabel(actual)}.`,
     NotBatteryRetailer: () => "Only the retailer holding this battery can mark it sold.",
     OwnableUnauthorizedAccount: () => "Only the contract owner can do this.",
+    RenounceOwnershipDisabled: () => "Ownership can't be renounced, only transferred.",
     EnforcedPause: () => "The contract is paused.",
     ExpectedPause: () => "The contract is not paused.",
 };

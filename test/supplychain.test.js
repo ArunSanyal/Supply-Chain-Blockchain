@@ -109,6 +109,17 @@ describe("SupplyChain", () => {
                 .to.be.revertedWithCustomError(sc, "EmptyName");
         });
 
+        it("lets the owner update a deactivated participant without reactivating it", async () => {
+            const { sc } = await loadFixture(registeredFixture);
+            await sc.deactivateParticipant(Role.Manufacturer, 1);
+            await expect(sc.updateParticipant(Role.Manufacturer, 1, "CellWorks Ltd", "Pune"))
+                .to.emit(sc, "ParticipantUpdated")
+                .withArgs(Role.Manufacturer, 1, "CellWorks Ltd", "Pune");
+            const p = await sc.participants(Role.Manufacturer, 1);
+            expect(p.name).to.equal("CellWorks Ltd");
+            expect(p.active).to.equal(false);
+        });
+
         it("deactivates without deleting the record", async () => {
             const { sc, man } = await loadFixture(registeredFixture);
             await expect(sc.deactivateParticipant(Role.Manufacturer, 1))
@@ -387,6 +398,25 @@ describe("SupplyChain", () => {
             await sc.transferOwnership(stranger.address);
             await expect(sc.connect(rms).acceptOwnership())
                 .to.be.revertedWithCustomError(sc, "OwnableUnauthorizedAccount").withArgs(rms.address);
+        });
+
+        it("lets the owner cancel a pending transfer", async () => {
+            const { sc, owner, stranger } = await loadFixture(deployFixture);
+            await sc.transferOwnership(stranger.address);
+            await sc.transferOwnership(ethers.ZeroAddress);
+            expect(await sc.pendingOwner()).to.equal(ethers.ZeroAddress);
+            await expect(sc.connect(stranger).acceptOwnership())
+                .to.be.revertedWithCustomError(sc, "OwnableUnauthorizedAccount").withArgs(stranger.address);
+            expect(await sc.owner()).to.equal(owner.address);
+        });
+
+        it("never allows renouncing ownership", async () => {
+            const { sc, owner, stranger } = await loadFixture(deployFixture);
+            await expect(sc.renounceOwnership())
+                .to.be.revertedWithCustomError(sc, "RenounceOwnershipDisabled");
+            await expect(sc.connect(stranger).renounceOwnership())
+                .to.be.revertedWithCustomError(sc, "RenounceOwnershipDisabled");
+            expect(await sc.owner()).to.equal(owner.address);
         });
     });
 });
